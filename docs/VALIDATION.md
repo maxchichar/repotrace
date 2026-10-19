@@ -95,3 +95,21 @@ Verified locally with a disposable PostgreSQL 17 container:
 - Credential-pattern scan found no token/password literals in publishable files. Generated report data remains ignored.
 
 GitHub read/write access to maxchichar/vec-premium-apps was confirmed. Vercel CLI reported **Logged out**; neither a Vercel login/token nor hosted DATABASE_URL is available in the workspace. Actual remote deployment and production-domain validation remain blocked by those prerequisites. Importing the pushed repository and entering credentials securely in Vercel is documented in DEPLOYMENT.md. Cloud proxy-bound credentials are not copied to another platform.
+
+## Analysis failure and unrestricted date ranges — 2026-10-19
+
+Reproduced the screenshot's generic HTTP 500 using the previous production bundle, a migrated disposable PostgreSQL 17 database, and the live public repository `hmaach/01edu-tests` for May 7, 2025–February 5, 2026. The source-level live regression located the crash in attribution: incomplete GitHub account objects reached a login string operation. Account metadata is now validated before creating a linked identity; incomplete records stay unresolved unless other observed evidence establishes a numeric account/email link. No identities are invented. The attribution algorithm version is now 1.2.0, so cached reports are recomputed for new analyses.
+
+All history is now the default. Custom windows no longer have a 366-day limit. The collector omits the lower date filter for all-history mode; reports retain the mode and latest bound, with the earliest observed evidence shown as the timeline start. Multi-year timelines aggregate calendar periods and preserve zero-activity periods without truncating later evidence. Existing API/time/request caps remain and can produce explicitly partial history.
+
+Server configuration failures now identify missing/invalid database settings, missing migrations, rejected database credentials, and invalid GitHub tokens. Error responses provide a correlation reference; server logs retain processing stage, exception codes and stack locations without raw exception messages or provider request headers. The browser handles non-JSON platform errors and timeouts.
+
+Verified against the optimized production bundle running locally with VERCEL=1 and disposable PostgreSQL:
+
+- **54 unit/integration tests passed, 1 optional live test skipped** in the normal suite. Tests cover incomplete/empty account objects, unambiguous observed numeric ID linking, unresolved bots, multi-year percentages/timelines, all-history request filtering, storage failure messages, and safe diagnostic references.
+- The optional live GitHub regression was run separately and passed for the reported repository/window.
+- Typecheck, lint and `npm run vercel:build` passed. The configured build applied the additive migration and compiled successfully.
+- **4 browser tests passed**, including the real Hello-World report/profile/export flow, default all-history selection, multi-year form validity, actionable configuration/platform errors, keyboard/accessibility checks and responsive layouts down to 320 px.
+- Real HTTP requests for `hmaach/01edu-tests` returned **200** for the screenshot window, all-history mode, and a custom 2020–2026 window. The retained all-history scope began at observed evidence on December 12, 2024. Missing DATABASE_URL on the hosted-mode server returned actionable **503 / DATABASE_NOT_CONFIGURED** with a request reference.
+
+These are local production-mode checks using real GitHub evidence, not direct verification of the deployed Vercel domain. No hosted Neon credentials or Vercel authentication are available in this workspace; the production domain was blocked by the workspace network proxy. Production deployment status must be checked separately after pushing. Large-history completeness, durable background ingestion and load certification remain outside these checks.

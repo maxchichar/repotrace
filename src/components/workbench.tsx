@@ -35,8 +35,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { TimelineChart } from './timeline-chart';
-import { dailySeries, measuredRows } from '@/lib/measurements';
+import { activitySeries, measuredRows } from '@/lib/measurements';
 import type { Analysis, Contributor, Evidence, Metric, Scope } from '@/lib/types';
+import { readApiResponse, requestFailureMessage } from '@/lib/api-client';
 import { cn, number, percent, shortDate } from '@/lib/utils';
 const metrics: Record<
   Metric,
@@ -163,7 +164,7 @@ function EvidenceList({ items }: { items: Evidence[] }) {
     </div>
   );
 }
-function DailyTable({
+function ActivityTable({
   people,
   metric,
   scope,
@@ -172,25 +173,25 @@ function DailyTable({
   metric: Metric;
   scope: Scope;
 }) {
-  const data = dailySeries(people, metric, scope);
+  const data = activitySeries(people, metric, scope);
   return (
     <details className="daily-table">
-      <summary>View daily data table</summary>
+      <summary>View activity data table</summary>
       <div className="table-scroll">
         <table>
           <caption className="sr-only">
-            Daily measured {metrics[metric].label.toLowerCase()} (UTC)
+            Measured activity: {metrics[metric].label.toLowerCase()} (UTC)
           </caption>
           <thead>
             <tr>
-              <th scope="col">Date (UTC)</th>
+              <th scope="col">Period (UTC)</th>
               <th scope="col">{metrics[metric].label}</th>
             </tr>
           </thead>
           <tbody>
-            {data.map(({ date, value }) => (
+            {data.map(({ date, label, value }) => (
               <tr key={date}>
-                <th scope="row">{date}</th>
+                <th scope="row">{label}</th>
                 <td>{number(value)}</td>
               </tr>
             ))}
@@ -268,7 +269,7 @@ function Profile({
         Contributor activity <span className="small-muted">Commit units · UTC</span>
       </h3>
       <TimelineChart contributors={[person]} metric="commits" scope={report.scope} />
-      <DailyTable people={[person]} metric="commits" scope={report.scope} />
+      <ActivityTable people={[person]} metric="commits" scope={report.scope} />
       <div className="file-breakdown">
         <h3 className="subheading">
           Files worked on <span className="small-muted">Eligible churn</span>
@@ -432,6 +433,7 @@ export function Workbench({
   const [includeBots, setIncludeBots] = useState(true);
   const [selected, setSelected] = useState(initialContributor);
   const [url, setUrl] = useState('');
+  const [allHistory, setAllHistory] = useState(true);
   const [branch, setBranch] = useState('');
   const [since, setSince] = useState(() =>
     new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10),
@@ -457,19 +459,23 @@ export function Workbench({
         body: JSON.stringify({
           url,
           branch: branch || undefined,
-          since: new Date(`${since}T00:00:00.000Z`).toISOString(),
-          until: new Date(`${until}T23:59:59.999Z`).toISOString(),
+          mode: allHistory ? 'all' : 'custom',
+          ...(allHistory
+            ? {}
+            : {
+                since: new Date(`${since}T00:00:00.000Z`).toISOString(),
+                until: new Date(`${until}T23:59:59.999Z`).toISOString(),
+              }),
         }),
         signal: AbortSignal.timeout(120000),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Analysis failed.');
+      const data = await readApiResponse<Analysis>(response);
       setReport(data as Analysis);
       setSelected(undefined);
       setTab('Overview');
       router.push(`/reports/${data.id}`);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Analysis failed. Please try again.');
+      setError(requestFailureMessage(e));
     } finally {
       setLoading(false);
     }
@@ -483,11 +489,10 @@ export function Workbench({
         method: 'POST',
         signal: AbortSignal.timeout(60000),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'AI request failed.');
+      const data = await readApiResponse<Analysis>(response);
       setReport(data);
     } catch (e) {
-      setAiError(e instanceof Error ? e.message : 'AI request failed.');
+      setAiError(requestFailureMessage(e));
     } finally {
       setAiLoading(false);
     }
@@ -649,7 +654,35 @@ export function Workbench({
                     <ShieldCheck size={13} />
                     Public repositories only. No GitHub sign-in required.
                   </p>
-                  <div className="scope-fields">
+                  <fieldset className="range-picker" aria-describedby="range-help">
+                    <legend className="field-label">Analysis range</legend>
+                    <div className="segmented" aria-label="Analysis range">
+                      <button
+                        type="button"
+                        className={allHistory ? 'selected' : ''}
+                        aria-pressed={allHistory}
+                        disabled={loading}
+                        onClick={() => setAllHistory(true)}
+                      >
+                        All history
+                      </button>
+                      <button
+                        type="button"
+                        className={!allHistory ? 'selected' : ''}
+                        aria-pressed={!allHistory}
+                        disabled={loading}
+                        onClick={() => setAllHistory(false)}
+                      >
+                        Custom dates
+                      </button>
+                    </div>
+                    <p id="range-help" className="field-help">
+                      {allHistory
+                        ? 'Analyze reachable branch history through today. Large histories may return a partial report.'
+                        : 'Choose any date range, including multiple years. Large histories may return a partial report.'}
+                    </p>
+                  </fieldset>
+                  <div className={cn('scope-fields', allHistory && 'all-history')}>
                     <div>
                       <label htmlFor="branch" className="field-label">
                         Branch <span>optional</span>
@@ -666,35 +699,39 @@ export function Workbench({
                         />
                       </div>
                     </div>
-                    <div>
-                      <label htmlFor="since" className="field-label">
-                        From <span>UTC</span>
-                      </label>
-                      <Input
-                        id="since"
-                        type="date"
-                        required
-                        value={since}
-                        onChange={(e) => setSince(e.target.value)}
-                        max={until}
-                        disabled={loading}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="until" className="field-label">
-                        Through <span>UTC, inclusive</span>
-                      </label>
-                      <Input
-                        id="until"
-                        type="date"
-                        required
-                        value={until}
-                        onChange={(e) => setUntil(e.target.value)}
-                        min={since}
-                        max={new Date().toISOString().slice(0, 10)}
-                        disabled={loading}
-                      />
-                    </div>
+                    {!allHistory && (
+                      <>
+                        <div>
+                          <label htmlFor="since" className="field-label">
+                            From <span>UTC</span>
+                          </label>
+                          <Input
+                            id="since"
+                            type="date"
+                            required
+                            value={since}
+                            onChange={(e) => setSince(e.target.value)}
+                            max={until}
+                            disabled={loading}
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="until" className="field-label">
+                            Through <span>UTC, inclusive</span>
+                          </label>
+                          <Input
+                            id="until"
+                            type="date"
+                            required
+                            value={until}
+                            onChange={(e) => setUntil(e.target.value)}
+                            min={since}
+                            max={new Date().toISOString().slice(0, 10)}
+                            disabled={loading}
+                          />
+                        </div>
+                      </>
+                    )}
                   </div>
                   {loading && (
                     <div className="loading-message" role="status">
@@ -845,7 +882,9 @@ export function Workbench({
                 </span>
                 <span>
                   <Clock3 size={14} />
-                  {shortDate(report.scope.since)} — {shortDate(report.scope.until)} UTC
+                  {report.scope.mode === 'all'
+                    ? `All reachable history · through ${shortDate(report.scope.until)} UTC`
+                    : `${shortDate(report.scope.since)} — ${shortDate(report.scope.until)} UTC`}
                 </span>
                 <Badge
                   className={
@@ -1089,7 +1128,7 @@ export function Workbench({
                         <Badge>UTC</Badge>
                       </div>
                       <TimelineChart contributors={people} metric={metric} scope={report.scope} />
-                      <DailyTable people={people} metric={metric} scope={report.scope} />
+                      <ActivityTable people={people} metric={metric} scope={report.scope} />
                     </section>
                     <section className="panel module-panel">
                       <div className="panel-heading">

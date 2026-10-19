@@ -148,3 +148,19 @@ describe('GitHub ingestion integration over HTTP boundary', () => {
     expect(result.warnings.join()).toContain('file pagination');
   });
 });
+
+it('all-history requests omit the lower date bound and retain the all-history scope', async () => {
+  const { client } = api((u) => {
+    const initial = standard(u);
+    if (initial) return initial;
+    if (u.pathname.endsWith('/commits')) {
+      expect(u.searchParams.has('since')).toBe(false);
+      return json([commit('a')]);
+    }
+    if (u.pathname.includes('/commits/')) return json(commit('a'));
+    return json([]);
+  });
+  const result = await analyzeRepository({ url: repo.url, ...scope, mode: 'all' }, client);
+  expect(result.scope.mode).toBe('all');
+  expect(result.contributors[0].commits).toBe(1);
+});

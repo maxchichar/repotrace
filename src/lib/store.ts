@@ -1,4 +1,5 @@
 import 'server-only';
+import { storageError } from './db/errors';
 import { assertHostedStorage } from './deployment';
 import { mkdir, readFile, writeFile, rename, readdir, unlink } from 'node:fs/promises';
 import path from 'node:path';
@@ -78,7 +79,7 @@ export async function readReport(id: string): Promise<Analysis> {
       return row.payload;
     } catch (error) {
       if (error instanceof AppError) throw error;
-      throw new AppError('Report storage is temporarily unavailable.', 503);
+      throw storageError(error);
     }
   }
   try {

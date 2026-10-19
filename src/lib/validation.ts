@@ -1,11 +1,15 @@
 import { z } from 'zod';
 export class AppError extends Error {
+  readonly code: string;
   constructor(
     message: string,
     public status = 400,
     public retryAfter?: number,
+    options?: { code?: string; cause?: unknown },
   ) {
-    super(message);
+    super(message, options?.cause ? { cause: options.cause } : undefined);
+    this.name = 'AppError';
+    this.code = options?.code ?? 'REQUEST_FAILED';
   }
 }
 export function parseRepository(value: string) {
@@ -57,26 +61,49 @@ export const inputSchema = z
         'Invalid branch name.',
       )
       .optional(),
-    since: z.iso.datetime(),
-    until: z.iso.datetime(),
+    mode: z.enum(['custom', 'all']).default('custom'),
+    since: z.iso.datetime().optional(),
+    until: z.iso.datetime().optional(),
   })
   .strict()
   .superRefine((v, ctx) => {
-    const start = Date.parse(v.since),
-      end = Date.parse(v.until);
-    if (start >= end)
-      ctx.addIssue({ code: 'custom', message: 'Start must be before end.', path: ['since'] });
-    if (end - start > 366 * 86400000)
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Choose a window of 366 days or fewer.',
-        path: ['until'],
-      });
-    if (end > Date.now() + 86400000)
+    if (v.mode === 'custom') {
+      if (!v.since)
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Choose a start date or select All history.',
+          path: ['since'],
+        });
+      if (!v.until)
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Choose an end date or select All history.',
+          path: ['until'],
+        });
+      if (v.since && v.until && Date.parse(v.since) >= Date.parse(v.until)) {
+        ctx.addIssue({ code: 'custom', message: 'Start must be before end.', path: ['since'] });
+      }
+    }
+    if (v.until && Date.parse(v.until) > Date.now() + 86400000) {
       ctx.addIssue({
         code: 'custom',
         message: 'The end date cannot be in the future.',
         path: ['until'],
       });
-  });
+    }
+  })
+  .transform((v) => ({
+    ...v,
+    since: v.mode === 'all' ? '0001-01-01T00:00:00.000Z' : v.since!,
+    until: v.until ?? new Date(new Date().setUTCHours(23, 59, 59, 999)).toISOString(),
+  }));
+export function parseAnalysisInput(body: unknown) {
+  const result = inputSchema.safeParse(body);
+  if (!result.success)
+    throw new AppError(result.error.issues.map((i) => i.message).join(' '), 400, undefined, {
+      code: 'INVALID_INPUT',
+    });
+  parseRepository(result.data.url);
+  return result.data;
+}
 export const reportId = z.uuid();

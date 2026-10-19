@@ -9,7 +9,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { Contributor, Metric, Scope } from '@/lib/types';
-import { dailySeries } from '@/lib/measurements';
+import { activitySeries } from '@/lib/measurements';
 import { number } from '@/lib/utils';
 export function TimelineChart({
   contributors,
@@ -20,13 +20,14 @@ export function TimelineChart({
   metric: Metric;
   scope: Scope;
 }) {
-  const data = dailySeries(contributors, metric, scope);
+  const data = activitySeries(contributors, metric, scope);
+  const resolution = data[0]?.resolution ?? 'day';
   if (!data.length) return <div className="chart-empty">No activity in this window.</div>;
   return (
     <div
       className="h-64 w-full min-w-0 overflow-hidden"
       role="img"
-      aria-label={`Daily ${metric === 'churn' ? 'changed lines' : metric}. Exact values in the daily data table below.`}
+      aria-label={`Activity by ${resolution}: ${metric === 'churn' ? 'changed lines' : metric}. Exact values in the activity data table below.`}
     >
       <ResponsiveContainer width="100%" height="100%" minWidth={0}>
         <AreaChart
@@ -43,7 +44,7 @@ export function TimelineChart({
           <CartesianGrid vertical={false} stroke="#eeece7" />
           <XAxis
             dataKey="date"
-            tickFormatter={(s) => String(s).slice(5)}
+            tickFormatter={(s) => (resolution === 'day' ? String(s).slice(5) : String(s))}
             tick={{ fontSize: 11, fill: '#78716c' }}
             tickLine={false}
             axisLine={false}

@@ -4,7 +4,7 @@ An evidence-first GitHub contribution intelligence platform. Analyze a **public*
 
 ## Deploy to Vercel
 
-Import `maxchichar/vec-premium-apps` into Vercel using the Next.js preset and Node.js 24.x. Connect hosted PostgreSQL, set `DATABASE_URL` and your server-only `GROQ_API_KEY`, then deploy. The configured build command migrates the database before compiling. Local report storage is disabled on Vercel; PostgreSQL also enforces shared deployment-wide request limits.
+Import `maxchichar/repotrace` into Vercel using the Next.js preset and Node.js 24.x. Connect hosted PostgreSQL, set `DATABASE_URL` and your server-only `GROQ_API_KEY`, then deploy. The configured build command migrates the database before compiling. Local report storage is disabled on Vercel; PostgreSQL also enforces shared deployment-wide request limits.
 
 Follow [the deployment guide](docs/DEPLOYMENT.md) for environment variables, secure key entry, preview database separation, verification and rollback. Cloud-workspace credentials do not automatically transfer to Vercel.
 
@@ -17,7 +17,7 @@ npm ci --cache /tmp/repotrace-npm-cache
 npm run dev
 ```
 
-Open the running app using your development host's normal preview mechanism. The app starts with an empty repository form. Use a full `https://github.com/owner/repo` URL, optional branch, and at most 366 days. The server uses the environment HTTPS proxy (`NODE_USE_ENV_PROXY=1` in start/dev scripts). GitHub API access to `api.github.com` must be allowed. Public repos work without a token at GitHub's lower unauthenticated quota.
+Open the running app using your development host's normal preview mechanism. The app starts with an empty repository form. Use a full `https://github.com/owner/repo` URL, optional branch, and **All history** (the default) or a custom UTC date range. Custom ranges can span multiple years; there is no fixed day limit. Collection budgets still apply, and incomplete reports disclose their limits. The server uses the environment HTTPS proxy (`NODE_USE_ENV_PROXY=1` in start/dev scripts). GitHub API access to `api.github.com` must be allowed. Public repos work without a token at GitHub's lower unauthenticated quota.
 
 ## Server-only configuration
 
@@ -59,6 +59,8 @@ Without DATABASE_URL, atomic local JSON reports are retained up to seven days, c
 - Feature intent comes from linked commit/PR titles, not proof of a delivered feature. Modules are literal top-level paths. CODEOWNERS is not treated as historical ownership.
 - The selected branch resolves to an immutable head for commit traversal. PR pages are a live base-branch view, not a transactional snapshot. Committer timestamps (author date fallback is disclosed) and PR merge timestamps define their respective UTC windows.
 
+Timelines show explicit zero-activity periods and aggregate longer ranges into calendar months or years without discarding recent activity. Incomplete account metadata remains unresolved unless observed evidence links it unambiguously.
+
 A run is capped at 120 observed commits, ten list pages per collection, 30 file pages/3,000 files per commit, 180 upstream requests, and a 90-second dispatch budget (individual requests time out). Bounded sequential requests avoid request bursts. GitHub rate-limit and Retry-After information is surfaced rather than repeatedly retrying an exhausted quota. Timeouts, failures, and caps generate **partial** reports with explicit warnings. Even a finished API traversal cannot establish deleted history, unrecorded coauthors, total effort, or actual impact. UI percentages are rounded; exports preserve underlying fractions.
 
 ## Verify
@@ -92,7 +94,7 @@ Use only a disposable test database for the integration suite. Unit/HTTP adapter
 
 ## API
 
-- `POST /api/analyses` — JSON `{url, branch?, since, until}` (ISO UTC dates). Validates scope, reads public GitHub metadata, pins head, collects bounded evidence, computes measures, caches 15 minutes, persists report. Same-origin mutations, 4 KB body cap, two active analyses, hourly allowance.
+- `POST /api/analyses` — JSON `{url, branch?, mode: "all"}` for history through today, or `{url, branch?, mode: "custom", since, until}` (ISO UTC dates; omitting mode preserves the custom-range API). Validates scope, reads public GitHub metadata, pins head, collects bounded evidence, computes measures, caches 15 minutes, persists report. Same-origin mutations, 4 KB body cap, two active analyses, hourly allowance.
 - `GET /api/reports/:id` — retained report or 404; storage outage returns 503.
 - `GET /api/reports/:id/export?format=json|csv` — evidence-rich JSON or contributor CSV attachment.
 - `POST /api/reports/:id/insights` — explicit opt-in, at most four AI requests/hour per client bucket, one active model request. Existing estimates reused.

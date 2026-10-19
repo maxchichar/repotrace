@@ -6,11 +6,22 @@ import { AppError, parseRepository } from './validation';
 import type { RawCommit, RawPR, Repo, Scope } from './types';
 
 export function githubClient(fetcher?: typeof fetch) {
-  return new Octokit({
-    auth: process.env.GITHUB_TOKEN || process.env.GH_TOKEN || undefined,
-    userAgent: 'RepoTrace/0.1',
-    request: { timeout: 15000, ...(fetcher ? { fetch: fetcher } : {}) },
-  });
+  const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+  try {
+    if (token && !token.trim()) throw new Error('Blank token');
+    return new Octokit({
+      auth: token?.trim() || undefined,
+      userAgent: 'RepoTrace/0.2',
+      request: { timeout: 15000, ...(fetcher ? { fetch: fetcher } : {}) },
+    });
+  } catch (cause) {
+    throw new AppError(
+      'GitHub authentication is misconfigured. Check GITHUB_TOKEN in Vercel and redeploy.',
+      503,
+      undefined,
+      { code: 'GITHUB_TOKEN_INVALID', cause },
+    );
+  }
 }
 interface Limits {
   maxCommits: number;
@@ -72,6 +83,13 @@ export async function analyzeRepository(
               60,
           ),
         );
+      if (e.status === 401)
+        throw new AppError(
+          'GitHub rejected the server token. Update GITHUB_TOKEN in Vercel and redeploy.',
+          503,
+          undefined,
+          { code: 'GITHUB_TOKEN_INVALID', cause: error },
+        );
       if (e.status === 404) throw new AppError('Public repository or branch not found.', 404);
       if (e.status === 409)
         throw new AppError('This repository has no commit history to analyze.', 422);
@@ -125,7 +143,7 @@ export async function analyzeRepository(
       const response = await call<RawCommit[]>('GET /repos/{owner}/{repo}/commits', {
         ...base,
         sha: head,
-        since: input.since,
+        since: input.mode === 'all' ? undefined : input.since,
         until: input.until,
         per_page: 100,
         page,
@@ -221,7 +239,7 @@ export async function analyzeRepository(
         ...r.data.filter(
           (p) =>
             p.merged_at &&
-            Date.parse(p.merged_at) >= Date.parse(input.since) &&
+            (input.mode === 'all' || Date.parse(p.merged_at) >= Date.parse(input.since)) &&
             Date.parse(p.merged_at) <= Date.parse(input.until),
         ),
       );
@@ -246,7 +264,7 @@ export async function analyzeRepository(
   return buildAnalysis({
     id: randomUUID(),
     repo: repository,
-    scope: { since: input.since, until: input.until, branch },
+    scope: { since: input.since, until: input.until, branch, mode: input.mode },
     commits,
     prs,
     warnings: [...warnings],

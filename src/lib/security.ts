@@ -1,8 +1,12 @@
 import 'server-only';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { AppError } from './validation';
 const buckets = new Map<string, { count: number; reset: number }>();
 export function guardRequest(request: Request, kind: 'analysis' | 'ai') {
+  assertSameOrigin(request);
+  consumeLocalQuota(request, kind);
+}
+export function assertSameOrigin(request: Request) {
   const url = new URL(request.url),
     origin = request.headers.get('origin');
   const expectedOrigin =
@@ -11,6 +15,8 @@ export function guardRequest(request: Request, kind: 'analysis' | 'ai') {
     throw new AppError('Cross-origin requests are not allowed.', 403);
   if (request.headers.get('sec-fetch-site') === 'cross-site')
     throw new AppError('Cross-site requests are not allowed.', 403);
+}
+function consumeLocalQuota(request: Request, kind: 'analysis' | 'ai') {
   // Only trust the real client header when an operator configures a trusted reverse proxy.
   const address =
     process.env.TRUST_PROXY === '1'
@@ -55,17 +61,57 @@ export async function readBody(request: Request) {
     throw new AppError('Request body must be valid JSON.');
   }
 }
-export function errorResponse(error: unknown) {
+export function errorResponse(
+  error: unknown,
+  context: { requestId?: string; stage?: string } = {},
+) {
+  const requestId = context.requestId ?? randomUUID();
   const e =
     error instanceof AppError
       ? error
-      : new AppError('The request could not be completed. Please try again.', 500);
+      : new AppError(
+          'The server could not complete the analysis. Check Vercel function logs using the reference below.',
+          500,
+          undefined,
+          { code: 'INTERNAL_ERROR', cause: error },
+        );
+  if (e.status >= 500) {
+    // Do not log raw exception messages, provider headers, SQL parameters, or URLs:
+    // they can contain credentials. Stack locations + cause codes identify the fault.
+    const causes = [];
+    let current: unknown = e;
+    for (let depth = 0; depth < 4 && current && typeof current === 'object'; depth++) {
+      const item = current as { name?: unknown; code?: unknown; stack?: unknown; cause?: unknown };
+      causes.push({
+        name: typeof item.name === 'string' ? item.name : 'UnknownError',
+        code: typeof item.code === 'string' ? item.code : undefined,
+        frames:
+          typeof item.stack === 'string'
+            ? item.stack
+                .split('\n')
+                .filter((line) => line.trim().startsWith('at '))
+                .slice(0, 5)
+            : [],
+      });
+      current = item.cause;
+    }
+    console.error(
+      'repotrace_request_failed',
+      JSON.stringify({ requestId, stage: context.stage ?? 'request', causes }),
+    );
+  }
   return Response.json(
-    { error: e.message },
+    {
+      error: e.message,
+      code: e.code,
+      requestId,
+      ...(e.retryAfter ? { retryAfter: e.retryAfter } : {}),
+    },
     {
       status: e.status,
       headers: {
         'Cache-Control': 'no-store',
+        'X-Request-Id': requestId,
         ...(e.retryAfter ? { 'Retry-After': String(e.retryAfter) } : {}),
       },
     },

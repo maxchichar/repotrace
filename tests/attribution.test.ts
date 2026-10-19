@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildAnalysis, generatedReason } from '../src/lib/attribution';
-import { dailySeries, measuredRows } from '../src/lib/measurements';
+import { activitySeries, measuredRows } from '../src/lib/measurements';
 import { parseRepository, inputSchema } from '../src/lib/validation';
 import { alice, bob, bot, commit, pr, repo, scope } from './fixtures';
 const build = (commits = [commit('a')], prs = [pr(1)]) =>
@@ -31,14 +31,14 @@ describe('repository validation', () => {
     'https://github.com/a/b#secret',
     'https://github.com:444/a/b',
   ])('rejects %s', (url) => expect(() => parseRepository(url)).toThrow());
-  it('rejects reversed, oversized, unknown and malformed scope fields', () => {
+  it('rejects reversed, unknown and malformed scope fields', () => {
     expect(
       inputSchema.safeParse({ url: repo.url, since: scope.until, until: scope.since }).success,
     ).toBe(false);
     expect(
       inputSchema.safeParse({ url: repo.url, since: '2020-01-01T00:00:00Z', until: scope.until })
         .success,
-    ).toBe(false);
+    ).toBe(true);
     expect(inputSchema.safeParse({ url: repo.url, ...scope, token: 'secret' }).success).toBe(false);
     expect(inputSchema.safeParse({ url: repo.url, ...scope, branch: 'bad..branch' }).success).toBe(
       false,
@@ -135,7 +135,7 @@ describe('fractional evidence attribution', () => {
 
 it('fills inactive UTC days with zero rather than interpolating work', () => {
   const report = build([commit('a')], []);
-  const series = dailySeries(report.contributors, 'commits', scope);
+  const series = activitySeries(report.contributors, 'commits', scope);
   expect(series).toHaveLength(31);
   expect(series.find((d) => d.date === '2026-01-09')?.value).toBe(0);
   expect(series.find((d) => d.date === '2026-01-10')?.value).toBe(1);

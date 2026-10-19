@@ -8,6 +8,20 @@ test('landing, keyboard access, methodology and responsive layout', async ({ pag
   await page.keyboard.press('Tab');
   await expect(page.getByText('Skip to content', { exact: true })).toBeFocused();
   await expect(page.getByLabel('Public GitHub repository', { exact: true })).toHaveValue('');
+  await expect(page.getByRole('button', { name: 'All history', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.locator('#since')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Custom dates', exact: true }).click();
+  await page.locator('#since').fill('2010-01-01');
+  await page.locator('#until').fill('2025-12-31');
+  await page.getByLabel('Public GitHub repository', { exact: true }).fill('https://github.com/octocat/Hello-World');
+  expect(
+    await page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),
+  ).toBe(true);
+  await page.getByLabel('Public GitHub repository', { exact: true }).fill('');
+  await page.getByRole('button', { name: 'All history', exact: true }).click();
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect(
     axe.violations.map((v) => ({
@@ -57,6 +71,7 @@ test('live public report, profile, metrics, exports and AI unavailable state', a
   await page
     .getByLabel('Public GitHub repository', { exact: true })
     .fill('https://github.com/octocat/Hello-World');
+  await page.getByRole('button', { name: 'Custom dates', exact: true }).click();
   await page.locator('#since').fill('2011-01-01');
   await page.locator('#until').fill('2011-12-31');
   await page.getByRole('button', { name: 'Analyze repository' }).click();
@@ -117,4 +132,35 @@ test('live public report, profile, metrics, exports and AI unavailable state', a
     ).toBe(true);
   }
   expect(errors).toEqual([]);
+});
+
+test('analysis errors expose an actionable reference and platform timeouts without JSON parsing failures', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await page
+    .getByLabel('Public GitHub repository', { exact: true })
+    .fill('https://github.com/hmaach/01edu-tests');
+  await page.route('**/api/analyses', (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error:
+          'Database tables are missing. Set the Vercel build command to npm run vercel:build and redeploy.',
+        code: 'DATABASE_SCHEMA_MISSING',
+        requestId: 'browser-reference',
+      }),
+    }),
+  );
+  await page.getByRole('button', { name: 'Analyze repository' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'Database tables' })).toContainText(
+    'browser-reference',
+  );
+  await page.unroute('**/api/analyses');
+  await page.route('**/api/analyses', (route) =>
+    route.fulfill({ status: 504, contentType: 'text/html', body: '<html>Gateway Timeout</html>' }),
+  );
+  await page.getByRole('button', { name: 'Analyze repository' }).click();
+  await expect(page.getByRole('alert').filter({ hasText: 'execution time' })).toBeVisible();
 });

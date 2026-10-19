@@ -1,4 +1,4 @@
-export const ALGORITHM = '1.1.0';
+export const ALGORITHM = '1.2.0';
 export interface Actor {
   id: number;
   login: string;
@@ -46,6 +46,7 @@ export interface Repo {
   head: string;
 }
 export interface Scope {
+  mode?: 'custom' | 'all';
   since: string;
   until: string;
   branch?: string;

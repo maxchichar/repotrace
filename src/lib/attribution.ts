@@ -15,6 +15,15 @@ import { ALGORITHM } from './types';
 
 const emailKey = (email: string) => email.trim().toLowerCase();
 const digest = (value: string) => createHash('sha256').update(value).digest('hex').slice(0, 24);
+function linkedActor(actor: Actor | null): Actor | null {
+  return actor &&
+    Number.isSafeInteger(actor.id) &&
+    actor.id > 0 &&
+    typeof actor.login === 'string' &&
+    actor.login.trim()
+    ? actor
+    : null;
+}
 function account(actor: Actor): Person {
   return {
     id: `gh:${actor.id}`,
@@ -58,15 +67,16 @@ export function buildAnalysis(input: {
     const date = Date.parse(c.commit.committer?.date ?? c.commit.author?.date ?? '');
     return (
       Number.isFinite(date) &&
-      date >= Date.parse(input.scope.since) &&
+      (input.scope.mode === 'all' || date >= Date.parse(input.scope.since)) &&
       date <= Date.parse(input.scope.until)
     );
   });
   const emailAccounts = new Map<string, Set<string>>();
   const people = new Map<string, Person>();
-  for (const c of commits)
-    if (c.author) {
-      const p = account(c.author);
+  for (const c of commits) {
+    const actor = linkedActor(c.author);
+    if (actor) {
+      const p = account(actor);
       people.set(p.id, p);
       const email = c.commit.author?.email;
       if (email) {
@@ -75,13 +85,21 @@ export function buildAnalysis(input: {
         ids.add(p.id);
         emailAccounts.set(key, ids);
       }
+    } else if (c.author) {
+      warnings.add(
+        'GitHub returned incomplete account metadata. These records remain unresolved unless other observed evidence links them unambiguously.',
+      );
     }
+  }
   const resolve = (actor: Actor | null, name: string, email: string, fallback: string): Person => {
-    if (actor) {
-      const p = account(actor);
+    const linked = linkedActor(actor);
+    if (linked) {
+      const p = account(linked);
       people.set(p.id, p);
       return p;
     }
+    if (actor && Number.isSafeInteger(actor.id) && people.has(`gh:${actor.id}`))
+      return people.get(`gh:${actor.id}`)!;
     const key = emailKey(email);
     const matches = emailAccounts.get(key);
     if (key && matches?.size === 1) return people.get([...matches][0])!;
@@ -94,7 +112,7 @@ export function buildAnalysis(input: {
         .replace(/[\w.+-]+@[\w.-]+\.[a-z]{2,}/gi, '[email redacted]')
         .slice(0, 100)
         .trim() || 'Unresolved author';
-    const p: Person = { id, name: safeName, bot: false, identity: 'unresolved' };
+    const p: Person = { id, name: safeName, bot: actor?.type === 'Bot', identity: 'unresolved' };
     if (!people.has(id)) people.set(id, p);
     warnings.add(
       'Some authors could not be linked to a verified GitHub account. Equal coauthor credit is a policy, not verified effort.',
@@ -164,7 +182,7 @@ export function buildAnalysis(input: {
   for (const pr of new Map(input.prs.map((p) => [p.number, p])).values()) {
     if (
       !pr.merged_at ||
-      Date.parse(pr.merged_at) < Date.parse(input.scope.since) ||
+      (input.scope.mode !== 'all' && Date.parse(pr.merged_at) < Date.parse(input.scope.since)) ||
       Date.parse(pr.merged_at) > Date.parse(input.scope.until)
     )
       continue;
@@ -237,7 +255,15 @@ export function buildAnalysis(input: {
     createdAt: now.toISOString(),
     expiresAt: new Date(now.getTime() + 7 * 86400000).toISOString(),
     repo: input.repo,
-    scope: input.scope,
+    scope:
+      input.scope.mode === 'all'
+        ? {
+            ...input.scope,
+            since:
+              evidence.map((e) => e.date).sort((a, b) => Date.parse(a) - Date.parse(b))[0] ??
+              input.scope.until,
+          }
+        : input.scope,
     warnings: [...warnings],
     traversalComplete: input.complete,
     requests: input.requests,

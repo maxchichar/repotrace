@@ -2033,3 +2033,20 @@ tbody tr:last-child th {
     scroll-behavior: auto !important;
   }
 }
+
+.range-picker {
+  border: 0;
+  padding: 0;
+  margin: 20px 0 0;
+  min-width: 0;
+}
+.range-picker .segmented {
+  width: fit-content;
+}
+.range-picker .field-help {
+  margin-bottom: 0;
+  line-height: 1.8;
+}
+.scope-fields.all-history {
+  grid-template-columns: 1fr;
+}

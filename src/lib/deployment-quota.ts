@@ -3,6 +3,7 @@ import { sql, lt } from 'drizzle-orm';
 import { database } from './db/client';
 import { rateLimits } from './db/schema';
 import { assertHostedStorage } from './deployment';
+import { storageError } from './db/errors';
 import { AppError } from './validation';
 
 // A server-wide hourly ceiling, shared by every Vercel function instance. It bounds
@@ -35,6 +36,6 @@ export async function enforceDeploymentQuota(kind: 'analysis' | 'ai', now = Date
     });
   } catch (error) {
     if (error instanceof AppError) throw error;
-    throw new AppError('The shared request limiter is unavailable. Please try again later.', 503);
+    throw storageError(error);
   }
 }

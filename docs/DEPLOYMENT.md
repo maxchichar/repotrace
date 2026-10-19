@@ -1,6 +1,6 @@
 # Deploy RepoTrace to Vercel
 
-RepoTrace is a Next.js application. Import **maxchichar/vec-premium-apps**, branch **main**, with the repository root as the Root Directory. Keep the GitHub repository private if desired; Vercel can deploy a private GitHub repository once its GitHub integration has access.
+RepoTrace is a Next.js application. Import **maxchichar/repotrace**, branch **main**, with the repository root as the Root Directory. Keep the GitHub repository private if desired; Vercel can deploy a private GitHub repository once its GitHub integration has access.
 
 ## Required setup
 
@@ -35,7 +35,7 @@ RepoTrace is a Next.js application. Import **maxchichar/vec-premium-apps**, bran
 Use the actual deployment URL provided by Vercel; no deployment URL has been invented in this repository.
 
 1. Visit `/` and confirm the repository form loads. GET `/api/health` should return 200; this is process health, not database/provider readiness.
-2. Analyze `https://github.com/octocat/Hello-World`, dates `2011-01-01` through `2011-12-31`, and verify two commit units, three changed lines, and original GitHub evidence. Inspect scope warnings; the branch head itself can change upstream.
+2. Select **Custom dates** and analyze `https://github.com/octocat/Hello-World`, dates `2011-01-01` through `2011-12-31`, and verify two commit units, three changed lines, and original GitHub evidence. Inspect scope warnings; the branch head itself can change upstream.
 3. Reload the report URL and open it in a separate session to verify PostgreSQL persistence. Test CSV/JSON export.
 4. Explicitly request AI estimates once and inspect contributor-specific references. This incurs provider usage. Verify that measured contributor statistics do not change.
 5. Inspect Vercel function logs for errors without logging credential values, database URLs, or complete provider request headers.
@@ -55,3 +55,15 @@ npx vercel deploy --prod
 ```
 
 This cloud workspace currently has no Vercel login/token or hosted DATABASE_URL. The GitHub push and local deployment checks can be completed independently. The user's Vercel account connection, database provisioning and secure environment entry are prerequisites to an actual production deployment.
+
+## Troubleshooting failed analyses
+
+The form displays actionable configuration errors and a request reference. Search Vercel function logs for that reference (`repotrace_request_failed`); logs contain the processing stage and stack locations without raw credentials or provider request headers.
+
+- `DATABASE_NOT_CONFIGURED` / `DATABASE_CONFIG_INVALID`: set Production `DATABASE_URL` to the actual PostgreSQL connection URL from Neon, then redeploy. Do not paste a `psql` command.
+- `DATABASE_SCHEMA_MISSING`: ensure the build command is `npm run vercel:build`, then redeploy to apply migrations.
+- `DATABASE_AUTH_FAILED` / `DATABASE_UNAVAILABLE`: verify Neon credentials, host availability and provider TLS settings.
+- `GITHUB_TOKEN_INVALID`: replace the server-side token or remove it to use GitHub's smaller unauthenticated quota, then redeploy.
+- A platform timeout may return HTML instead of application JSON; the form now identifies this and suggests a smaller scope. Collection remains bounded even in **All history** mode. A partial report does not establish complete repository history.
+
+All-history is the default range; custom dates support multiple years without a 366-day validation limit. Existing retained reports keep their original scope and algorithm version. New analyses use the corrected attribution algorithm.

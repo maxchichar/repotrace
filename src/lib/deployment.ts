@@ -6,6 +6,8 @@ export function assertHostedStorage() {
     throw new AppError(
       'Hosted report storage is not configured. Add DATABASE_URL in Vercel and redeploy.',
       503,
+      undefined,
+      { code: 'DATABASE_NOT_CONFIGURED' },
     );
   }
 }

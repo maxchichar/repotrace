@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 export const metadata: Metadata = {
-  title: { default: 'RepoTrace — Contribution intelligence', template: '%s · RepoTrace' },
+  title: { default: 'RepoTrace | Contribution intelligence', template: '%s · RepoTrace' },
   description:
     'Understand who contributed, what changed, and what the evidence actually says. Transparent GitHub contribution analysis.',
 };

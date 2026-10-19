@@ -1,6 +1,13 @@
 import type { NextConfig } from 'next';
 const config: NextConfig = {
   poweredByHeader: false,
+  serverExternalPackages: ['pdfkit'],
+  outputFileTracingIncludes: {
+    '/api/reports/*/export': [
+      './public/fonts/DejaVuSans.ttf',
+      './node_modules/pdfkit/js/data/*.afm',
+    ],
+  },
   async headers() {
     return [
       {

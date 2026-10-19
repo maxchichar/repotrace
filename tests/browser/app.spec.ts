@@ -16,7 +16,9 @@ test('landing, keyboard access, methodology and responsive layout', async ({ pag
   await page.getByRole('button', { name: 'Custom dates', exact: true }).click();
   await page.locator('#since').fill('2010-01-01');
   await page.locator('#until').fill('2025-12-31');
-  await page.getByLabel('Public GitHub repository', { exact: true }).fill('https://github.com/octocat/Hello-World');
+  await page
+    .getByLabel('Public GitHub repository', { exact: true })
+    .fill('https://github.com/octocat/Hello-World');
   expect(
     await page.locator('form').evaluate((form) => (form as HTMLFormElement).checkValidity()),
   ).toBe(true);
@@ -67,6 +69,15 @@ test('live public report, profile, metrics, exports and AI unavailable state', a
   request,
 }) => {
   test.skip(process.env.E2E_LIVE !== '1', 'Requires a successfully collected live GitHub report.');
+  await page.route('https://avatars.githubusercontent.com/**', (route) =>
+    route.fulfill({
+      contentType: 'image/png',
+      body: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jZQkAAAAASUVORK5CYII=',
+        'base64',
+      ),
+    }),
+  );
   await page.goto('/');
   await page
     .getByLabel('Public GitHub repository', { exact: true })
@@ -84,6 +95,17 @@ test('live public report, profile, metrics, exports and AI unavailable state', a
   page.on('pageerror', (e) => errors.push(e.message));
   await expect(page.getByText('Traversal finished', { exact: false })).toBeVisible();
   await expect(page.getByText('50.0%', { exact: true })).toHaveCount(2);
+  await expect(page.locator('.person-mark img').first()).toHaveAttribute(
+    'src',
+    /^https:\/\/avatars\.githubusercontent\.com\/u\/\d+\?s=96$/,
+  );
+  await expect(page.locator('.person-mark img').first()).toBeVisible();
+  expect(
+    await page
+      .locator('.person-mark img')
+      .first()
+      .evaluate((image) => (image as HTMLImageElement).naturalWidth),
+  ).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Code changes', exact: true }).click();
   await expect(page.getByText('66.7%', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Merged PRs', exact: true }).click();
@@ -91,6 +113,7 @@ test('live public report, profile, metrics, exports and AI unavailable state', a
   await page.getByRole('button', { name: 'View Spaceghost profile' }).click();
   await expect(page.getByRole('heading', { name: 'Spaceghost', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Linked evidence' })).toBeVisible();
+  await expect(page.locator('.profile-panel .person-mark img')).toBeVisible();
   expect(
     (
       await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
@@ -112,6 +135,13 @@ test('live public report, profile, metrics, exports and AI unavailable state', a
       nodes: v.nodes.map((n) => ({ target: n.target, summary: n.failureSummary })),
     })),
   ).toEqual([]);
+  const pdf = await request.get(`/api/reports/${id}/export?format=pdf`);
+  expect(pdf.status()).toBe(200);
+  expect(pdf.headers()['content-type']).toBe('application/pdf');
+  expect(pdf.headers()['content-disposition']).toContain('.pdf');
+  expect((await pdf.body()).subarray(0, 5).toString()).toBe('%PDF-');
+  const invalidExport = await request.get(`/api/reports/${id}/export?format=html`);
+  expect(invalidExport.status()).toBe(400);
   const csv = await request.get(`/api/reports/${id}/export?format=csv`);
   expect(csv.status()).toBe(200);
   expect(await csv.text()).toContain('Spaceghost');
@@ -131,6 +161,16 @@ test('live public report, profile, metrics, exports and AI unavailable state', a
       await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
     ).toBe(true);
   }
+  await page.getByRole('button', { name: 'Overview', exact: true }).click();
+  await page.getByText('Export', { exact: true }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('link', { name: 'Report PDF', exact: true }).click();
+  expect((await downloadPromise).suggestedFilename()).toBe(`repotrace-${id}.pdf`);
+  await page.unroute('https://avatars.githubusercontent.com/**');
+  await page.route('https://avatars.githubusercontent.com/**', (route) => route.abort());
+  await page.reload();
+  await expect(page.locator('.person-mark img')).toHaveCount(0);
+  await expect(page.locator('.person-mark').first()).not.toBeEmpty();
   expect(errors).toEqual([]);
 });
 

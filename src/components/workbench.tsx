@@ -35,6 +35,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { TimelineChart } from './timeline-chart';
+import { ContributorAvatar as PersonMark } from './contributor-avatar';
+import { withoutEmDash } from '@/lib/presentation';
 import { activitySeries, measuredRows } from '@/lib/measurements';
 import type { Analysis, Contributor, Evidence, Metric, Scope } from '@/lib/types';
 import { readApiResponse, requestFailureMessage } from '@/lib/api-client';
@@ -77,13 +79,6 @@ function Logo() {
     </Link>
   );
 }
-function PersonMark({ person }: { person: Contributor }) {
-  return (
-    <span className={cn('person-mark', person.bot && 'bot-mark')}>
-      {person.bot ? <Code2 size={17} /> : person.name.slice(0, 2).toUpperCase()}
-    </span>
-  );
-}
 function EvidenceList({ items }: { items: Evidence[] }) {
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(25);
@@ -118,7 +113,7 @@ function EvidenceList({ items }: { items: Evidence[] }) {
             </span>
             <div className="min-w-0 flex-1">
               <a href={e.url} target="_blank" rel="noopener noreferrer" className="evidence-title">
-                {e.title || 'Untitled commit'}
+                {withoutEmDash(e.title || 'Untitled commit')}
                 <ArrowUpRight size={13} />
               </a>
               <div className="evidence-meta">
@@ -310,9 +305,9 @@ function Profile({
             <Sparkles size={13} /> AI ESTIMATE · {insight.confidence.toUpperCase()} CONFIDENCE
           </span>
           <h3>{insight.impact} potential impact</h3>
-          <p>{insight.summary}</p>
-          <p>{insight.rationale}</p>
-          <p className="small-muted">Uncertainty: {insight.limitations}</p>
+          <p>{withoutEmDash(insight.summary)}</p>
+          <p>{withoutEmDash(insight.rationale)}</p>
+          <p className="small-muted">Uncertainty: {withoutEmDash(insight.limitations)}</p>
           <div className="flex flex-wrap gap-2">
             {insight.evidenceIds.map((id) => (
               <a
@@ -771,7 +766,7 @@ export function Workbench({
               <section className="principles" aria-label="How RepoTrace works">
                 <div className="section-label">
                   <span>CLARITY AT EVERY LAYER</span>
-                  <span>01 — 03</span>
+                  <span>01 to 03</span>
                 </div>
                 <div className="principle-grid">
                   <article>
@@ -852,7 +847,10 @@ export function Workbench({
                     </a>
                   </h1>
                   <p>
-                    {report.repo.description || `Contribution evidence for ${report.repo.fullName}`}
+                    {withoutEmDash(
+                      report.repo.description ||
+                        `Contribution evidence for ${report.repo.fullName}`,
+                    )}
                   </p>
                 </div>
                 <div className="report-actions">
@@ -866,6 +864,7 @@ export function Workbench({
                       Export
                     </summary>
                     <div>
+                      <a href={`/api/reports/${report.id}/export?format=pdf`}>Report PDF</a>
                       <a href={`/api/reports/${report.id}/export?format=csv`}>Contributor CSV</a>
                       <a href={`/api/reports/${report.id}/export?format=json`}>
                         Full evidence JSON
@@ -884,7 +883,7 @@ export function Workbench({
                   <Clock3 size={14} />
                   {report.scope.mode === 'all'
                     ? `All reachable history · through ${shortDate(report.scope.until)} UTC`
-                    : `${shortDate(report.scope.since)} — ${shortDate(report.scope.until)} UTC`}
+                    : `${shortDate(report.scope.since)} to ${shortDate(report.scope.until)} UTC`}
                 </span>
                 <Badge
                   className={
@@ -906,12 +905,12 @@ export function Workbench({
                   <TriangleAlert size={14} />
                   {report.traversalComplete
                     ? 'Scope & attribution caveats'
-                    : 'Some data is missing — shares cover observed evidence'}
+                    : 'Some data is missing. Shares cover observed evidence'}
                   <span>{report.warnings.length} notes</span>
                 </summary>
                 <ul>
                   {report.warnings.map((w, i) => (
-                    <li key={i}>{w}</li>
+                    <li key={i}>{withoutEmDash(w)}</li>
                   ))}
                 </ul>
               </details>

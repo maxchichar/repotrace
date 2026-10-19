@@ -1,6 +1,6 @@
 # RepoTrace
 
-An evidence-first GitHub contribution intelligence platform. Analyze a **public** repository by branch and UTC window; compare separate commit, code-change, and merged-PR shares; inspect contributor profiles, files, modules, timelines, and original GitHub evidence; share reports and export JSON/CSV. Optional AI summaries estimate potential technical impact with cited evidence and uncertainty, separately from measured activity. No runtime demo analytics or invented contributor data.
+An evidence-first GitHub contribution intelligence platform. Analyze a **public** repository by branch and UTC window; compare separate commit, code-change, and merged-PR shares; inspect contributor profiles, files, modules, timelines, and original GitHub evidence; share reports and export PDF/JSON/CSV. Optional AI summaries estimate potential technical impact with cited evidence and uncertainty, separately from measured activity. No runtime demo analytics or invented contributor data.
 
 ## Deploy to Vercel
 
@@ -47,7 +47,7 @@ npm start
 
 The migration is additive/idempotent; it preserves existing rows. Reports use UUID IDs, JSONB payloads, indexed expiry, transactional upserts, and seven-day retention. Configure a managed database and verified TLS before deployment. Analysis cache and in-flight limits remain process-local. On Vercel, atomic PostgreSQL counters additionally enforce a shared deployment-wide quota; per-user authentication/fairness and durable job coordination remain future work.
 
-Without DATABASE_URL, atomic local JSON reports are retained up to seven days, capped at 100. Share URLs work only while the serving instance retains the report; ephemeral or horizontally scaled filesystem hosting needs PostgreSQL. Share IDs are convenience links, not access control: reports contain public activity and are publicly readable. CSV/JSON exports include scope and evidence. CSV formula prefixes are escaped.
+Without DATABASE_URL, atomic local JSON reports are retained up to seven days, capped at 100. Share URLs work only while the serving instance retains the report; ephemeral or horizontally scaled filesystem hosting needs PostgreSQL. Share IDs are convenience links, not access control: reports contain public activity and are publicly readable. PDF/CSV/JSON exports include scope and evidence. The PDF is a paginated text report with separate measured shares and saved AI estimates, warnings, contributor details and clickable evidence references. It lists up to ten changed paths per contributor; JSON retains full file statistics and timelines. GitHub-linked contributor avatars load from the GitHub avatar CDN by numeric account ID, with initials for unresolved accounts or failed images. CSV formula prefixes are escaped.
 
 ## Attribution contract
 
@@ -96,7 +96,7 @@ Use only a disposable test database for the integration suite. Unit/HTTP adapter
 
 - `POST /api/analyses` — JSON `{url, branch?, mode: "all"}` for history through today, or `{url, branch?, mode: "custom", since, until}` (ISO UTC dates; omitting mode preserves the custom-range API). Validates scope, reads public GitHub metadata, pins head, collects bounded evidence, computes measures, caches 15 minutes, persists report. Same-origin mutations, 4 KB body cap, two active analyses, hourly allowance.
 - `GET /api/reports/:id` — retained report or 404; storage outage returns 503.
-- `GET /api/reports/:id/export?format=json|csv` — evidence-rich JSON or contributor CSV attachment.
+- `GET /api/reports/:id/export?format=json|csv|pdf` - downloadable PDF report, evidence-rich JSON or contributor CSV.
 - `POST /api/reports/:id/insights` — explicit opt-in, at most four AI requests/hour per client bucket, one active model request. Existing estimates reused.
 - `GET /api/health` — process health, not proof of GitHub/database readiness.
 

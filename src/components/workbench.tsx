@@ -73,7 +73,7 @@ function Logo() {
         <GitBranch size={22} />
       </span>
       <span>
-        Repo<span className="font-normal text-white/65">Trace</span>
+        Repo<span className="brand-secondary">Trace</span>
         <span className="brand-dot">.</span>
       </span>
     </Link>
@@ -1218,7 +1218,7 @@ export function Workbench({
         </main>
         <footer className="main-footer">
           <span>
-            RepoTrace<span className="text-emerald-700">.</span>{' '}
+            RepoTrace<span className="text-blue-700">.</span>{' '}
             <span className="footer-separator">/</span> The work behind the repository.
           </span>
           <button

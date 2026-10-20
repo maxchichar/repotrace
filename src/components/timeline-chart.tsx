@@ -37,27 +37,27 @@ export function TimelineChart({
         >
           <defs>
             <linearGradient id="activity-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#23846e" stopOpacity={0.22} />
-              <stop offset="100%" stopColor="#23846e" stopOpacity={0} />
+              <stop offset="0%" stopColor="#0969da" stopOpacity={0.22} />
+              <stop offset="100%" stopColor="#0969da" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} stroke="#eeece7" />
+          <CartesianGrid vertical={false} stroke="#d8dee4" />
           <XAxis
             dataKey="date"
             tickFormatter={(s) => (resolution === 'day' ? String(s).slice(5) : String(s))}
-            tick={{ fontSize: 11, fill: '#78716c' }}
+            tick={{ fontSize: 11, fill: '#59636e' }}
             tickLine={false}
             axisLine={false}
             minTickGap={35}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: '#78716c' }}
+            tick={{ fontSize: 11, fill: '#59636e' }}
             tickFormatter={number}
             tickLine={false}
             axisLine={false}
           />
           <Tooltip
-            contentStyle={{ borderRadius: 10, border: '1px solid #e5e3dc', fontSize: 12 }}
+            contentStyle={{ borderRadius: 6, border: '1px solid #d1d9e0', fontSize: 12 }}
             formatter={(value) => [
               number(Number(value)),
               metric === 'churn'
@@ -70,7 +70,7 @@ export function TimelineChart({
           <Area
             dataKey="value"
             type="stepAfter"
-            stroke="#237c64"
+            stroke="#0969da"
             strokeWidth={2}
             fill="url(#activity-fill)"
             isAnimationActive={false}

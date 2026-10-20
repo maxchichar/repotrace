@@ -129,3 +129,15 @@ Actual verification:
 - GitHub CDN access and the deployed Vercel site are blocked by this workspace's network proxy. Browser avatar tests use a controlled test-only PNG response followed by a failed response; live CDN delivery is not claimed. No production credentials or stored analytics were changed.
 
 The local production server was restarted after the final build. One intermediate browser run encountered stale CSS while the build replaced assets; the complete browser suite passed after restarting against the finished bundle.
+
+## GitHub-inspired light interface — 2026-10-20
+
+User direction: give the UI a GitHub feel with a light appearance. The chosen system is familiar, light and precise: pale gray navigation/header, white working surfaces, system sans typography, compact bordered controls/cards, blue links/charts, green actions, and coral active tabs. Shared CSS and button/input/badge primitives now use this palette. The form's decorative corner icon is hidden on mobile to keep the header compact; segmented controls preserve single-line labels. Reusable tokens and direction are recorded in `.interface-forge/DESIGN-SYSTEM.md`.
+
+Verification against the final optimized local production bundle:
+
+- Typecheck, lint and production build passed.
+- **All 4 browser tests passed** in 18.4 seconds, covering the real GitHub input/report/profile/metrics/evidence flow, PDF download and CSV/JSON export, image rendering/fallback, form/API errors, keyboard navigation and selected axe accessibility checks.
+- Responsive assertions passed at 320, 390, 768 and 1440 pixels. Desktop landing, mobile landing/methodology and a retained real `eeyung1/crdledger` report were rendered and visually inspected.
+- No new dependency or database migration was needed. Backend attribution, export content and GitHub API behavior are outside this visual change.
+- These checks do not certify manual screen-reader behavior, all browsers, field performance or full WCAG conformance. Production domain access and live GitHub CDN access remain blocked from the workspace; Vercel deployment status is checked through GitHub after push.

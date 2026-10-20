@@ -155,6 +155,23 @@ test('live public report, profile, metrics, exports and AI unavailable state', a
     ).violations.map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target) })),
   ).toEqual([]);
   await page.screenshot({ path: '/tmp/repotrace-live-report.png', fullPage: true });
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(
+    (
+      await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
+    ).violations.map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target) })),
+  ).toEqual([]);
+  await page.getByRole('button', { name: 'View Spaceghost profile' }).click();
+  expect(
+    (
+      await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
+    ).violations.map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target) })),
+  ).toEqual([]);
+  await page.getByRole('button', { name: 'Close contributor profile' }).click();
+  await page.screenshot({ path: '/tmp/repotrace-dark-report.png', fullPage: true });
+  await page.getByRole('button', { name: 'Switch to light mode' }).click();
+
   for (const width of [768, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
     expect(
@@ -203,4 +220,85 @@ test('analysis errors expose an actionable reference and platform timeouts witho
   );
   await page.getByRole('button', { name: 'Analyze repository' }).click();
   await expect(page.getByRole('alert').filter({ hasText: 'execution time' })).toBeVisible();
+});
+
+test('theme follows system preference, persists a keyboard choice, and synchronizes tabs', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  page.on('console', (message) => {
+    if (message.type() === 'error' && /hydrat/i.test(message.text())) errors.push(message.text());
+  });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(
+    await page.locator('html').evaluate((element) => getComputedStyle(element).colorScheme),
+  ).toBe('dark');
+  expect(
+    await page.locator('body').evaluate((element) => getComputedStyle(element).backgroundColor),
+  ).toBe('rgb(13, 17, 23)');
+  expect(
+    (
+      await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
+    ).violations.map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target) })),
+  ).toEqual([]);
+  await page.screenshot({ path: '/tmp/repotrace-dark-desktop.png', fullPage: true });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Switch to light mode' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  expect(await page.evaluate(() => localStorage.getItem('repotrace-theme'))).toBe('light');
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  const second = await page.context().newPage();
+  await second.goto('/');
+  await expect(second.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.getByRole('button', { name: 'Switch to dark mode' }).click();
+  await expect(second.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await second.close();
+  for (const width of [1440, 768, 390, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByRole('button', { name: 'Switch to light mode' })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
+      true,
+    );
+  }
+  await page.screenshot({ path: '/tmp/repotrace-dark-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Methodology', exact: true }).click();
+  expect(
+    (
+      await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()
+    ).violations.map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target) })),
+  ).toEqual([]);
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  expect(errors).toEqual([]);
+});
+
+test('theme switches when browser storage is blocked', async ({ page }) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(window, 'localStorage', {
+      value: {
+        getItem() {
+          throw new DOMException('Blocked', 'SecurityError');
+        },
+        setItem() {
+          throw new DOMException('Blocked', 'SecurityError');
+        },
+      },
+    }),
+  );
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+  await page.getByRole('button', { name: 'Switch to light mode' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });

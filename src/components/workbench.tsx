@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { TimelineChart } from './timeline-chart';
+import { ThemeToggle } from './theme-toggle';
 import { ContributorAvatar as PersonMark } from './contributor-avatar';
 import { withoutEmDash } from '@/lib/presentation';
 import { activitySeries, measuredRows } from '@/lib/measurements';
@@ -569,6 +570,7 @@ export function Workbench({
             <strong>{report ? report.repo.fullName : 'Repository analysis'}</strong>
           </div>
           <div className="topbar-right">
+            <ThemeToggle />
             <span className="public-label">
               <Github size={14} /> GitHub intelligence
             </span>
@@ -885,13 +887,7 @@ export function Workbench({
                     ? `All reachable history · through ${shortDate(report.scope.until)} UTC`
                     : `${shortDate(report.scope.since)} to ${shortDate(report.scope.until)} UTC`}
                 </span>
-                <Badge
-                  className={
-                    report.traversalComplete
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-                      : 'border-amber-200 bg-amber-50 text-amber-900'
-                  }
-                >
+                <Badge className={report.traversalComplete ? 'status-complete' : 'status-partial'}>
                   {report.traversalComplete ? <Check size={12} /> : <TriangleAlert size={12} />}{' '}
                   {report.traversalComplete ? 'Traversal finished' : 'Partial analysis'}
                 </Badge>
@@ -1218,7 +1214,7 @@ export function Workbench({
         </main>
         <footer className="main-footer">
           <span>
-            RepoTrace<span className="text-blue-700">.</span>{' '}
+            RepoTrace<span className="accent-text">.</span>{' '}
             <span className="footer-separator">/</span> The work behind the repository.
           </span>
           <button

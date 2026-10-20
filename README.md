@@ -105,3 +105,7 @@ Use only a disposable test database for the integration suite. Unit/HTTP adapter
 This application has local verification, not production/load certification. Vercel deployment requires hosted PostgreSQL and uses database-backed global quotas across function instances (12 analyses and 4 AI requests per UTC hour), a required-storage build gate, and route duration limits. Per-user authentication/fairness, durable background jobs, operational monitoring and backups are still needed before a larger public rollout. Cache/deduplication remains per-process. The bounded analysis workflow fits the configured 120-second route; unrestricted full-history jobs need a worker.
 
 Research, API uncertainties, competitor findings and sources: [docs/RESEARCH.md](docs/RESEARCH.md). Architecture and milestones: [docs/PLAN.md](docs/PLAN.md). Actual verification record: [docs/VALIDATION.md](docs/VALIDATION.md).
+
+## Appearance
+
+Use the sun/moon button in the header to switch between light and dark mode. RepoTrace follows your system preference until you choose a mode, then remembers that choice in your browser and synchronizes it across tabs. If browser storage is blocked, switching still works for the current session.

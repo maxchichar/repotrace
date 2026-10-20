@@ -37,27 +37,33 @@ export function TimelineChart({
         >
           <defs>
             <linearGradient id="activity-fill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#0969da" stopOpacity={0.22} />
-              <stop offset="100%" stopColor="#0969da" stopOpacity={0} />
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.22} />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
             </linearGradient>
           </defs>
-          <CartesianGrid vertical={false} stroke="#d8dee4" />
+          <CartesianGrid vertical={false} stroke="var(--border-default)" />
           <XAxis
             dataKey="date"
             tickFormatter={(s) => (resolution === 'day' ? String(s).slice(5) : String(s))}
-            tick={{ fontSize: 11, fill: '#59636e' }}
+            tick={{ fontSize: 11, fill: 'var(--fg-muted)' }}
             tickLine={false}
             axisLine={false}
             minTickGap={35}
           />
           <YAxis
-            tick={{ fontSize: 11, fill: '#59636e' }}
+            tick={{ fontSize: 11, fill: 'var(--fg-muted)' }}
             tickFormatter={number}
             tickLine={false}
             axisLine={false}
           />
           <Tooltip
-            contentStyle={{ borderRadius: 6, border: '1px solid #d1d9e0', fontSize: 12 }}
+            contentStyle={{
+              borderRadius: 6,
+              border: '1px solid var(--border-default)',
+              backgroundColor: 'var(--surface)',
+              color: 'var(--fg-default)',
+              fontSize: 12,
+            }}
             formatter={(value) => [
               number(Number(value)),
               metric === 'churn'
@@ -70,7 +76,7 @@ export function TimelineChart({
           <Area
             dataKey="value"
             type="stepAfter"
-            stroke="#0969da"
+            stroke="var(--accent)"
             strokeWidth={2}
             fill="url(#activity-fill)"
             isAnimationActive={false}

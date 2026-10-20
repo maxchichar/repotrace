@@ -141,3 +141,16 @@ Verification against the final optimized local production bundle:
 - Responsive assertions passed at 320, 390, 768 and 1440 pixels. Desktop landing, mobile landing/methodology and a retained real `eeyung1/crdledger` report were rendered and visually inspected.
 - No new dependency or database migration was needed. Backend attribution, export content and GitHub API behavior are outside this visual change.
 - These checks do not certify manual screen-reader behavior, all browsers, field performance or full WCAG conformance. Production domain access and live GitHub CDN access remain blocked from the workspace; Vercel deployment status is checked through GitHub after push.
+
+## Persistent light/dark mode — 2026-10-20
+
+Added a header theme button with accessible action labels and keyboard operation. The default follows system appearance; an explicit preference persists in localStorage and synchronizes between tabs. A static bootstrap in the document head sets the theme before body paint. The external-store subscription keeps React synchronized without hydration errors. Blocked localStorage is handled with a session-memory fallback. Shared semantic tokens cover surfaces, text, inputs, menus, badges, warnings and SVG chart/tooltips. Native date controls follow the selected color scheme.
+
+Actual verification against the final optimized production bundle:
+
+- Typecheck, lint and production build passed.
+- **All 6 browser tests passed** in 24.7 seconds. Existing live GitHub analysis/profile/evidence/PDF/CSV/JSON and avatar checks pass in addition to system theme changes, keyboard toggling, saved preferences after reload, cross-tab sync, blocked-storage behavior and theme button visibility/no overflow through 320, 390, 768 and 1440 px.
+- Selected axe checks passed on the light landing/report/evidence flow and dark landing, methodology, report and contributor profile. A separate real retained partial report also returned zero selected axe violations in dark mode.
+- Screenshot review covered dark desktop/mobile landing and a real retained `eeyung1/crdledger` partial report, including warnings, contributor table and timeline. No browser page errors or hydration errors were observed by the theme test.
+- One intermediate check caught temporary low contrast while button foreground/background colors animated during switching. Removing those color transitions resolved it; the complete final browser suite passes without waits that hide the transition.
+- No new dependency or database migration. Manual screen-reader, full WCAG certification, other browsers and field performance were not measured. Production-domain/CDN access remains blocked from this workspace; deployment status is checked separately through GitHub.

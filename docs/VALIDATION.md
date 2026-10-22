@@ -154,3 +154,9 @@ Actual verification against the final optimized production bundle:
 - Screenshot review covered dark desktop/mobile landing and a real retained `eeyung1/crdledger` partial report, including warnings, contributor table and timeline. No browser page errors or hydration errors were observed by the theme test.
 - One intermediate check caught temporary low contrast while button foreground/background colors animated during switching. Removing those color transitions resolved it; the complete final browser suite passes without waits that hide the transition.
 - No new dependency or database migration. Manual screen-reader, full WCAG certification, other browsers and field performance were not measured. Production-domain/CDN access remains blocked from this workspace; deployment status is checked separately through GitHub.
+
+## Transparent RepoTrace favicon — 2026-10-22
+
+Removed the supplied icon's light background using image generation/editing, then packaged the transparent result as a multi-resolution 16/32/48 px ICO, a 32 px PNG, a 180 px touch icon and a 512 px reusable transparent PNG. The SVG favicon embeds the edited image and switches to white for dark browser chrome via the browser's color-scheme media query. Next.js metadata references the PNG/SVG/touch icons; the file-convention favicon handles the ICO.
+
+The production build passed. All four generated icon links returned HTTP 200 with the expected image content types, including Next.js's hashed favicon URL. PNG alpha checks confirmed transparent and opaque pixels at all exported sizes. The SVG was rendered in Chromium for light and dark preferences and inspected on contrasting surfaces. Five standard browser tests passed; the optional live GitHub test was skipped because upstream analysis was unrelated to this asset change. No new tests or dependencies were added. Actual browser tab-chrome rendering and platform-specific icon cache refresh behavior were not certified.
